@@ -10,10 +10,14 @@ biketown <- read.csv("data/biketown-2018-trips.csv")
 str(biketown)
 summary(biketown)
 
-# adds a column w the hour of the starttime (in tidyverse)
+# adds a column w the hour and month of the starttime (in tidyverse)
 biketown$hour <-
   hms(biketown$StartTime) %>%
   hour()
+
+biketown$month <-
+  mdy(biketown$StartDate) %>%
+  month (label = T, abbr = T)
 
 #adds the same in base
 stime <- hms(biketown$StartTime)
@@ -29,8 +33,12 @@ hist(biketown$hour, breaks = seq(0, 24, 3))
 
 # focus on AM peak
 am_peak <- subset(biketown, hour >= 7 & hour < 10)
-hist(am_peak$hour, breaks = seq(0, 24, 1))
+hist(am_peak$hour, breaks = seq(7, 10, 1))
+barplot(table(am_peak$hour))
 
+# month
+freq_by_month <- table(biketown$month)
+barplot(freq_by_month)
 
 # import this dataset and plot gdppercap by lifeexp w points
 str(gapminder_data)
