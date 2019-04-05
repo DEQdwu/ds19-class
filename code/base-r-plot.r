@@ -36,9 +36,16 @@ am_peak <- subset(biketown, hour >= 7 & hour < 10)
 hist(am_peak$hour, breaks = seq(7, 10, 1))
 barplot(table(am_peak$hour))
 
-# month
+# hist trips per month
 freq_by_month <- table(biketown$month)
 barplot(freq_by_month)
+
+# looking by station
+freq_by_station <- table(biketown$StartHub)
+
+# sort by #, decreasing order, top 25 stations, dot chart
+s <- sort(freq_by_station, decreasing = T)[1:25]
+dotchart(s)
 
 # import this dataset and plot gdppercap by lifeexp w points
 str(gapminder_data)
