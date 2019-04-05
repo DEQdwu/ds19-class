@@ -98,3 +98,45 @@ gdp_continent <- gdp_country %>%
   group_by(continent) %>%
   summarize(cont_gdp = sum(total_gdp))
 gdp_continent  
+
+# install tidyr
+install.packages("tidyr")
+library(tidyr)
+library(readr)
+library(stringr)
+str(gapminder)
+
+# pull data
+bikenet <- read_csv("ds19-class/data/bikenet-change.csv")
+head(bikenet)
+summary(bikenet)
+summary(factor(bikenet$facility2013))
+
+# gather facility columns into single year variable
+colnames(bikenet)
+bikenet_long <- bikenet %>%
+  gather(key = "year", value = "facility",
+         facility2008:facility2013, na.rm = T) %>%
+  mutate(year = stringr::str_sub(year, start = -4))
+
+head(bikenet_long)
+         
+# danger below, fname may have multiple wods
+# unite()
+bikenet_long <- bikenet_long %>%
+  unite(col="street", c("fname", "ftype"), sep = " ")
+
+# separate street and suffix
+bikenet_long <- bikenet_long %>%
+  separate(street, c("name", "suffix"))
+
+# filter by a particulr bike ID
+bikenet_long %>% filter(bikeid == 139730)
+
+fac_lengths <- bikenet_long %>%
+  filter(facility %in% c("BKE-LANE", "BKE-BLVD", "BKE-BUFF",
+                         "BKE-TRAK", "PTH-REMU")) %>% 
+  group_by(year, facility) %>%
+  summarise(meters = sum(length_m)) %>%
+  mutate(miles = meters/1609)
+head(fac_lengths)
