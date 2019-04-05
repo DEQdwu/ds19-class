@@ -33,12 +33,68 @@ str(subset_2)
 
 # select some attributes but rename some for clarity
 subset_3 <- gapminder %>%
-  select(country, population = pop, lifeExp, gdp = gdpPercap)
+  select(country, year, population = pop, lifeExp, gdp = gdpPercap)
 str(subset_3)
 
 # using filter()
 africa <- gapminder %>%
   filter(continent == "Africa") %>%
-  select(country, population = pop, lifeExp)
+  select(country, year, population = pop, lifeExp)
   
-table(africa$country)
+table(africa)
+
+
+# select europe
+europe <- gapminder %>%
+  filter(continent == "Europe") %>%
+  select(country, year, population = pop)
+table(europe)
+
+# working with group_by() & summarize()
+str(gapminder %>% group_by(continent))
+
+# summarize mean GDP per continent
+gdp_continent <- gapminder %>%
+  group_by(continent) %>%
+  summarize(mean_gdp = mean(gdpPercap))
+
+
+# plot
+library(ggplot2)
+summary_plot <- gdp_continent %>%
+  ggplot(aes(x = mean_gdp, y = mean_lifeExp)) +
+  geom_point(stat = "identity") +
+  theme_bw()
+
+# calculate mean population for all the continents
+pop_continent <- gapminder %>%
+  group_by(continent) %>%
+  summarize(mean_pop = mean(pop))
+
+# count() and n()
+gapminder %>%
+  filter(year == 2002) %>%
+  count(continent, sort = TRUE)
+
+gapminder %>%
+  group_by(continent) %>%
+  summarize(se = sd(lifeExp)/sqrt(n()))
+
+# mutate() 
+# creates a column added to the data frame
+xy <- data.frame(x = rnorm(100),
+                 y = rnorm(100))
+head(xy)
+xyz <- xy %>%
+  mutate(z =  x * y)
+head(xyz)
+
+# add column GDP = gdppercap * pop then aggregate continent
+gdp_country <- gapminder %>%
+  mutate(total_gdp = gdpPercap * pop)
+head(gdp_country)
+
+gdp_continent <- gdp_country %>%
+  group_by(continent) %>%
+  summarize(cont_gdp = sum(total_gdp))
+gdp_continent  
