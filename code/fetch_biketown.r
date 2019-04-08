@@ -40,19 +40,40 @@ get_data <- function(start="7/2016", end=NULL,
   
   # lapply(a,b) applies function b to sequence a
   # and returns a list of the modified sequence
-  urls <- lapply(date_range, make_url, base_url = base_url)
+  # urls <- lapply(date_range, make_url, base_url = base_url)
   
-  # for loops can be easier for early development of code
-  for (u in urls)
-    download.file(u, destfile = paste0(outdir, 
-                                       str_sub(u, -11)))
+  # 3 ways to write the files
+  
+  # 1) for loops can be easier for early development of code
+  # for (u in urls)
+  #   download.file(u, destfile = paste0(outdir, 
+  #                                      str_sub(u, -11)))
+  
+  # 2) replace for-loop with lapply, use an inline function
+  # result <- lapply(urls, function(u) {
+  #   download.file(u, destfile = paste0(outdir, 
+  #    str_sub(u, -11)))
+  # })
+  
+  # 3) as one tidy piked version that combines generating 
+  # the url with downloading it
+  urls <-  lapply(date_range, make_url, base_url = base_url) %>%
+     lapply(function(u) {
+      download.file(u, destfile = paste0(outdir, 
+                                         str_sub(u, -11)))
+     })
+  
+  
+  
+  
 }
 ## manual run ##
+
 ## params
-# start <- "11/2018"
-# end <- NULL
-# 
-# get_data(start, end)
+start <- "11/2016"
+end <- "12/2016"
+
+get_data(start)
 
 
   
