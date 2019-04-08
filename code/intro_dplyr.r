@@ -1,5 +1,13 @@
 # intro to dplyr (dee-plier)
 library(dplyr)
+library(ggplot2)
+
+install.packages("sp")
+install.packages("sf")
+install.packages("mapview")
+library(sp)
+library(sf)
+library(mapview)
 
 # load gapminder data s sampel dataset
 gapminder <- read.csv("data/gapminder_data.csv",
@@ -139,4 +147,138 @@ fac_lengths <- bikenet_long %>%
   group_by(year, facility) %>%
   summarise(meters = sum(length_m)) %>%
   mutate(miles = meters/1609)
-head(fac_lengths)
+fac_lengths
+
+p <- ggplot(fac_lengths, aes(x=year, y=miles, 
+                             group = facility, 
+                             color = facility))
+p + geom_line()
+p + geom_point()
+p + geom_line() + scale_y_log10()
+p + geom_line() + labs(title = "Change in bike facilities in Portland",
+                       subtitle = "2008-2013",
+                       caption = "Source: Portland Metro") +
+  ylab("Total Miles") +
+  xlab("Year")
+
+p2 <- ggplot(fac_lengths, aes(x = year, y = miles,
+                              group = facility))
+p2 + geom_line(size = 1, color = "magenta") +
+  facet_wrap(~facility) +
+  scale_y_log10()
+
+
+# mapview project
+# Playing with mapping
+
+library(dplyr)
+
+# sp must be installed but no need to load
+
+#install.packages("sp")
+
+#install.packages("sf")
+
+library(sf)
+
+#install.packages("mapview")
+
+library(mapview)
+
+
+
+biketown <- read.csv("data/biketown-2018-trips.csv",
+                     
+                     stringsAsFactors = F)
+
+head(biketown)
+
+
+
+hubs_start_sf <- biketown %>%
+  
+  group_by(StartHub) %>%
+  
+  summarise(lat = mean(StartLatitude), lng = mean(StartLongitude),
+            
+            starts = n()) %>%
+  
+  filter(!is.na(lat)) %>%
+  
+  st_as_sf(coords = c("lng", "lat"), 
+           
+           crs = 4326, agr = "constant")
+
+
+
+mapview(hubs_start_sf, zcol = "starts") # if basemap won't load in RStudio
+
+# click "show in new window" button
+
+#  in viewer pane (just right of sweep)
+
+mapview(hubs_start_sf, cex = "starts", legend = T)
+
+mapview(hubs_start_sf, zcol = "starts", cex = "starts")
+
+
+
+hubs_end <- biketown %>%
+  
+  group_by(EndHub) %>%
+  
+  summarise(lat = mean(EndLatitude), lng = mean(EndLongitude),
+            
+            ends = n())
+
+hubs_end_sf <- hubs_end %>%
+  filter(!is.na(lat)) %>%
+  st_as_sf(coords = c("lng", "lat"), 
+           crs = 4326, agr = "constant")
+
+mapview(hubs_end_sf, zcol = "ends", cex = "ends")
+
+hubs_ratio_sf <- inner_join(hubs_start_sf, hubs_end,
+                            by = c("StartHub" = "EndHub")) %>%
+  mutate(starts_to_ends = starts / ends, ends_to_starts = ends / starts)
+
+summary(hubs_ratio_sf)
+
+mapview(hubs_ratio_sf, zcol = "starts_to_ends", cex = "starts_to_ends")
+mapview(hubs_ratio_sf, zcol = "ends_to_starts", cex = "ends_to_starts")
+
+m1 <- mapview(hubs_ratio_sf, zcol = "starts_to_ends", 
+              cex = "starts_to_ends", legend = F)
+
+m2 <- mapview(hubs_ratio_sf, zcol = "ends_to_starts", 
+              cex = "ends_to_starts", legend = F)
+
+
+sync(m1, m2)
+
+# playing with PM data
+library(ggplot2)
+library(lubridate)
+library(tidyr)
+
+PM25 <- rawpm25data %>%
+  mutate(date_l = mdy(Date), day=day(date_l))
+
+
+
+p <- ggplot(PM25, aes(x=Date, y=FinePM, 
+                             group = Monitor, 
+                             color = MOnitor))
+  theme_bw()
+  
+PM25 <- PM25 %>%
+  separate(Date, c("month", "day", "year"), sep = "/") %>%
+  unite(month_day, c("month", "day"), sep = "-")
+  
+test_fig <- PM25 %>%
+  ggplot(aes(x = month_day, y = FinePM, color = year)) +
+  geom_point() +
+  geom_line() +
+  facet_grid(Monitor ~ .)
+
+test_fig  
