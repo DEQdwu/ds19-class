@@ -14,8 +14,8 @@ pacman::p_load("readr")
 
 # another way to install multiple packages at once
 # but don't run pacman *and* these lines at the same time
-pkgs <- c("lubridate", "dplyr", "string", "readr")
-install.packages("pkgs")
+# pkgs <- c("lubridate", "dplyr", "string", "readr")
+# install.packages("pkgs")
 
 # takes start and end mm/yyyy format and tries to 
 # download files fr biketownpdx.com
@@ -49,8 +49,10 @@ get_data <- function(start="7/2016", end=NULL,
 }
 ## manual run ##
 ## params
-start <- "11/2018"
-end <- NULL
+# start <- "11/2018"
+# end <- NULL
+# 
+# get_data(start, end)
 
-get_data(start, end)
+
   
