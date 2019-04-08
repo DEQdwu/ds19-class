@@ -13,14 +13,19 @@ pacman::p_load("stringr")
 pacman::p_load("readr")
 
 # another way to install multiple packages at once
+# but don't run pacman *and* these lines at the same time
 pkgs <- c("lubridate", "dplyr", "string", "readr")
 install.packages("pkgs")
 
 # takes start and end mm/yyyy format and tries to 
 # download files fr biketownpdx.com
-get_data <- function(start, end,
+get_data <- function(start="7/2016", end=NULL,
                      base_url="https://s3.amazonaws.com/biketown-tripdata-public/",
                      outdir="data/biketown/") {
+  
+  #if no end date given, set to now
+  end <- ifelse(is.null(end), format(now(), "%m/%Y"), end)
+  
   
   # make url function only available within get_data bc of base_url reference
   make_url <- function(date, base_url) {
@@ -44,8 +49,8 @@ get_data <- function(start, end,
 }
 ## manual run ##
 ## params
-start <- "06/2018"
-end <- "08/2018"
+start <- "11/2018"
+end <- NULL
 
 get_data(start, end)
   
