@@ -1,0 +1,38 @@
+---
+title: "Intro to RMarkdown"
+author: "DPW"
+date: "April 8, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+```
+
+## Purpose
+Demonstrate how to use RMarkdown using biketown data. We will make a fwe plots, show some code, and play around with formatting in RMarkdown.
+``` {r biketown, echo = FALSE}
+# include = FALSE means none of this will show. 
+# echo = FALSE means don't show the code but do show results
+# eval = FALSE means don't eval or show results
+# results = "hide" hides results and shows code
+
+bike_1807 <- read.csv("data/biketown/2018_07.csv", stringsAsFactors = F)
+str(bike_1807)
+
+# insert bar chart w avg dist traveled by payment type
+pay_miles <- bike_1807 %>%
+  group_by(PaymentPlan) %>%
+  summarize(mean.miles = mean(Distance_Miles))
+
+pm_fig <- pay_miles %>%
+  ggplot(aes(x = PaymentPlan, y = mean.miles)) +
+  geom_bar(stat = "identity")
+pm_fig
+
+```
+
+

@@ -70,10 +70,10 @@ get_data <- function(start="7/2016", end=NULL,
 ## manual run ##
 
 ## params
-start <- "11/2016"
-end <- "12/2016"
+start <- "6/2018"
+end <- "12/2018"
 
-get_data(start)
+get_data(start, end)
 
 
   
