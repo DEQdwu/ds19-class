@@ -23,9 +23,8 @@ far_to_cel(212)
 far_to_cel(32)
 
 # Convert Kelvin to Celsius; add if(is.numeric(temp)) function to check for number input
-# THIS DOES NOT WORK, RETURNS ERROR FUNCTION IN CASE OF NUMBER
 kel_to_cel2 <- function(temp) { 
-  if(is.numeric(temp)) {
+  if(!is.numeric(temp)) {
     stop("temp not numeric")
     }
   cel <- temp - 273.15
@@ -33,3 +32,4 @@ kel_to_cel2 <- function(temp) {
 }
 kel_to_cel2(2)
 kel_to_cel2(100)
+
