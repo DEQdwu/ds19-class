@@ -4,9 +4,11 @@
 
 # pacman allows checking for and installing missing packages 
 # by checking if pacman is installed yet and if not, installing it
-if(!require("pacman")) {install.packages("pacman")}
-  library(pacman)
+# if(!require("pacman")) {install.packages("pacman")}
+#   library(pacman)
 # use pload to install 4 packages
+install.packages("pacman")
+library(pacman)
 pacman::p_load("lubridate")
 pacman::p_load("dplyr")
 pacman::p_load("stringr")
@@ -68,12 +70,6 @@ get_data <- function(start="7/2016", end=NULL,
   
 }
 ## manual run ##
-
-## params
-start <- "6/2018"
-end <- "12/2018"
-
-get_data(start, end)
 
 
   

@@ -1,0 +1,119 @@
+---
+title: "Working with dates and regex"
+author: "D Pei Wu"
+date: "April 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+```
+
+## Purpose
+Explore biketown data looking at the mean miles traveled per week during the summer of 2018 (06/2018 to 09/2018).
+
+``` {r pull_data}
+source("C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/code/fetch_biketown.r")
+get_data(start = "06/2018", end = "09/2018")
+setwd("/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/")
+
+# folder <- "/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/"
+# filenames <- list.files(path = "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/", pattern = "*.csv", all.files = FALSE,
+#                         full.names = FALSE,
+#                         recursive = FALSE, ignore.case = FALSE)
+# 
+# read_csv_filename <- function(filenames) {
+#   ret <- read.csv(filenames, stringsAsFactors = F,
+#                   strip.white = T, na.strings = "")
+#   ret$Source <- filenames
+#   ret
+# }
+# 
+# bike_raw <- plyr::ldply(filenames, read_csv_filename)
+
+file1 <- read.csv("/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/2018_06.csv", 
+                  stringsAsFactors = F)
+file2 <- read.csv("/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/2018_07.csv", 
+                  stringsAsFactors = F)
+file3 <- read.csv("/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/2018_08.csv", 
+                  stringsAsFactors = F)
+file4 <- read.csv("/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/2018_09.csv", 
+                  stringsAsFactors = F)
+
+# After calling in all files use bind_rows()
+bike_raw <- bind_rows(file1, file2, file3, file4)
+```
+
+```{r data_wrangling}
+str(bike_raw)
+
+# pulls date and time into one field for start and end
+
+bike_dfl <- bike_raw %>%
+  mutate(start.datetime = paste(StartDate, StartTime, sep = " "),
+          end.datetime = paste(EndDate, EndTime, sep = " "))
+
+str(bike_dfl)
+
+# convert start.datetime and end.datetime into date-time format
+# make sure to include your timezone
+
+# check acceptable timesone values
+OlsonNames()
+
+
+bike_dfl$start.datetime <- mdy_hm(bike_dfl$start.datetime)
+bike_dfl$end.datetime <- mdy_hm(bike_dfl$end.datetime)
+
+# convert dDuration into a usable format
+bike_dfl$Duration <- hms(bike_dfl$Duration)
+
+# Error thrown after convertine to duration indicating NAs, 
+# check raw dataframe for NAs in Duration column
+sum(is.na(bike_raw$Duration))
+
+
+```
+'lubridate' has 3 synonymous functions but they define very different actions:
+1. duration(): time spans are in unites of  seconds and there is no start date involved
+2. interval(): also measured in units of seconds and provides the difference between start and end
+3. period(): measures time span in units larger than seconds, is handy when accounting for DST and leap years.
+
+```{r durationn_cal}
+# calc interval
+bike_dfl$interval <- interval(bike_dfl$start.datetime, bike_dfl$end.datetime)
+head(bike_dfl$interval)
+
+# calc duration
+bike_dfl$duration.all <- as.duration(bike_dfl$interval)
+head(bike_dfl$duration.all)
+
+# calc period
+bike_dfl$period <- as.period(bike_dfl$duration.all)
+head(bike_dfl$period)
+
+# floor.date() is helpful for aggregating
+# also ceiling.date or round.date
+bike_wkagg <- bike_dfl %>%
+  mutate(week.datetime = floor_date(start.datetime, unit = "weeks"))
+head(bike_wkagg$week.datetime)
+
+# calculate weekly mean distance traveled
+
+
+# insert bar chart w avg dist traveled by payment type
+mean_dt <- bike_wkagg %>%
+  group_by(week.datetime) %>%
+  summarize(mean.miles = mean(Distance_Miles))
+
+
+# plot results
+wk_meandt_fig <- mean_dt %>%
+  ggplot(aes(x = week.datetime, y = mean.miles)) +
+  geom_bar(stat = "identity", fill = "orange")
+wk_meandt_fig
+
+```
