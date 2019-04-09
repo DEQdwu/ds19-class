@@ -1,0 +1,201 @@
+---
+title: "Split_apply_combine"
+author: "D Pei Wu"
+date: "April 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(modelr)
+library(purrr)
+library(broom)
+
+```
+
+## Purpose
+Explore and model bike counts on 3 PDX bridges
+
+## Our questions:
+1. How much of bike use can we pick up based on seasonality? 
+2. Are commuters over some bridges more weather-resistant than others?
+
+```{r init}
+getwd()
+"C:/Users/dpwpd/Documents/DataScienceClass/ds19-class"
+"data/"
+
+```
+
+```{r load data}
+source("code/load_counts.r")
+
+```
+
+```{r join data}
+bikecount_wx <- bikecounts %>%
+  left_join(weather, by = c("date" = "DATE")) %>%
+  select(date, bridge, total, TMIN, TMAX, PRCP)
+
+```
+dplyr joins are great! Left join above returns each row in bikecounts (left) with each amthching weather row (right), binding the weather columns by date. For more, check out tutorial on mikoontz.github
+
+```{r explore summarizing}
+bikecount_wx %>% 
+  ggplot(aes(x=date, y=total,
+       group = bridge, color = bridge)) +
+  geom_line() + 
+  # separates each bridge graph vertically
+  facet_wrap(bridge ~ .)
+
+bikecount_wx %>% 
+  ggplot(aes(x=date, y=total,
+       group = bridge, color = bridge)) +
+  geom_line() + 
+  # separates each bridge graph horizontally
+  facet_grid(bridge ~ .)
+
+bikecount_wx %>% 
+  ggplot(aes(x=date, y=total,
+       group = bridge, color = bridge)) +
+  geom_line() + 
+  # separates each bridge graph horizontally, adds yaxis limit
+  facet_grid(bridge ~ .) + ylim(c(0, 10000))
+
+```
+
+```{r explore some summary stats}
+# avg daily
+bikecount_wx %>%
+  group_by(bridge) %>%
+  summarize(avg_daily_counts = mean(total)) %>%
+  View()
+
+# avg monthly by year
+bikecount_wx %>%
+  group_by(bridge, year(date), month(date)) %>%
+  summarize(avg_monthly_counts = mean(total)) %>%
+  View()
+
+# daily avg monthly all years
+avg_monthly <- bikecount_wx %>%
+  group_by(bridge, month = month(date, label = T)) %>%
+  summarize(avg_monthly_counts = mean(total))
+
+ggplot(avg_monthly, aes(x = month, 
+                        y = avg_monthly_counts,
+                        color = bridge)) +
+  geom_point(size = 2)
+
+
+str(avg_monthly)
+
+```
+
+## Fitting models in R
+```{r model fitting}
+# models return list objects describing fit
+fit <- lm(total ~ TMIN + TMAX + PRCP + bridge,
+          data = bikecount_wx)
+str(fit)
+summary(fit)  
+plot(fit)
+
+# attempt to fit to log dist
+fit2 <- lm(log(total) ~ TMIN + TMAX + PRCP + bridge,
+          data = bikecount_wx)
+str(fit2)
+summary(fit2)  
+plot(fit2)
+
+# attempt to explore if temp stops coorelation after a max temp
+fit_poly <- lm(total ~ TMIN + TMAX + I(TMAX^2) + PRCP + bridge,
+   data = bikecount_wx)
+summary(fit_poly)
+coef(fit_poly) # could access coefs here by name or position
+
+f <- function(x) {197 * x + -0.99* x^2} # from regression result
+
+# stat functions extend a function over a range
+p <- ggplot(data = data.frame(x=0),
+            mapping = aes(x = x)) 
+
+p + stat_function(fun=f, color="lightblue", size=2) +
+  xlim(0,110) + xlab("deg F") + ylab("count")
+
+
+
+```
+
+```{r modelr sneak peek}
+bikecount_wx <- bikecount_wx %>%
+  add_predictions(fit_poly) %>%
+  add_residuals(fit_poly) %>%
+  mutate(pred = pred)
+head(bikecount_wx)
+
+ggplot() +
+  geom_line(data = bikecount_wx, aes(x=date, y = total),
+            color = "salmon") +
+  geom_line(data = bikecount_wx, aes(x=date, y=pred),
+           color = "blue") +
+  facet_grid(bridge ~ ., scales = "free") # free removes constraint
+ 
+```
+```{r split-apply-combine}
+# this nests data by bridge
+bw_nested <- bikecount_wx %>%
+  group_by(bridge) %>%
+  nest()
+str(bw_nested)
+View(bw_nested)
+
+# list factors in bw_nested 
+bw_nested[[1, "bridge"]]
+
+# fit to single bridge
+lm(total ~ TMIN + TMAX + PRCP,
+          data = bw_nested[[1, "data"]]) %>%
+  summary()
+
+# fit to all three bridges
+fit_func <- function(df) {
+  lm(total ~ TMIN + TMAX + PRCP,
+     data = df)
+}
+
+# one bridge at a time via function
+fit_func(bw_nested[[1, "data"]])
+
+# two at a time
+fits <- purrr::map(bw_nested$data[1:2], 
+                   fit_func)
+fits
+str(fits)
+
+# three at a time
+bw_nested <- bw_nested %>%
+  mutate(fit = purrr::map(data, fit_func),
+         tidy = purrr::map(fit, tidy),
+         glance = purrr::map(fit, glance))
+
+# unpack or combine results
+broom::tidy(bw_nested$fit[[1]])
+
+
+# unpack for all three
+bw_nested %>%
+  unnest(glance) %>%
+  arrange(desc(r.squared))
+
+bw_nested %>%
+  select(bridge, tidy) %>%
+  unnest(tidy) %>%
+  arrange(term, estimate, bridge)
+
+  
+```

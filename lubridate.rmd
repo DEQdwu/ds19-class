@@ -113,7 +113,21 @@ mean_dt <- bike_wkagg %>%
 # plot results
 wk_meandt_fig <- mean_dt %>%
   ggplot(aes(x = week.datetime, y = mean.miles)) +
-  geom_bar(stat = "identity", fill = "orange")
+  geom_bar(stat = "identity", fill = "orange") # +
+  # set scale for x axis
+
+# lauren + tammy's code for the smae thing
+plot1 <- ggplot(mean_dt, aes(as.Date(week.datetime), mean.miles)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  labs(title = "Average Biketown Ride Distance by Week",
+       subtitle = "July-Sept 2018",
+       caption = "source: Biketown") +
+  xlab("Week Of") + ylab("Average Miles") +
+  scale_x_date(date_breaks = "1 week") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_bw()
+plot1
+
 wk_meandt_fig
 
 ```
