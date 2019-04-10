@@ -168,20 +168,28 @@ fit_func <- function(df) {
      data = df)
 }
 
+fit_func2 <- function(df) {
+  lm(log(total) ~ TMIN + TMAX + PRCP,
+     data = df)
+}
+
 # one bridge at a time via function
-fit_func(bw_nested[[1, "data"]])
+fit_func2(bw_nested[[1, "data"]])
 
 # two at a time
 fits <- purrr::map(bw_nested$data[1:2], 
-                   fit_func)
+                   fit_func2)
 fits
 str(fits)
 
 # three at a time
 bw_nested <- bw_nested %>%
-  mutate(fit = purrr::map(data, fit_func),
+  mutate(fit = purrr::map(data, fit_func2),
          tidy = purrr::map(fit, tidy),
          glance = purrr::map(fit, glance))
+
+
+
 
 # unpack or combine results
 broom::tidy(bw_nested$fit[[1]])
@@ -195,7 +203,8 @@ bw_nested %>%
 bw_nested %>%
   select(bridge, tidy) %>%
   unnest(tidy) %>%
-  arrange(term, estimate, bridge)
+  arrange(term, estimate, bridge) %>%
+  View()
 
   
 ```

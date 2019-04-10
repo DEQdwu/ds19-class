@@ -1,0 +1,98 @@
+---
+title: "Spatial Data"
+author: "D Pei Wu"
+date: "April 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("sf")
+library(dplyr)
+library(sf)
+install.packages("lwgeom")
+library(lwgeom)
+install.packages("tidycensus")
+library(tidycensus)
+library(tidyr)
+```
+
+
+## Spatial manipulation with sf
+API Keys:
+DON'T COMMIT THIS
+DON'T PUSH THIS
+you can store API keys in separate files that are not linked to github or ny r projects, etc (paste in; remove it before pushing etc)
+there are some packages out there that deal with API keys and encryption
+there are always bots trolling on GitHub for info like this
+If you do commit you basically should delete your whole repository
+
+ggplot does mapping. let's do this!
+
+PostGIS (Python; does GIS & mapping)
+
+```{r tidycensus}
+# this loads API key for the session * DELETE ME WHEN DONE *
+# census_api_key("insert_key_here")
+
+# object v17
+v17 <- tidycensus::load_variables(2017, "acs5", cache = T)
+pdx_tracts_raw <- get_acs(geography = "tract", 
+                          year = 2017,
+                          variables = c("B19013_001",
+                                        "B03002_003",
+                                        "B01003_001"),
+                          state = "OR",
+                          county = c("Multnomah County"),
+                          geometry = T) %>% # variables medinc, white NH, pop
+  select(GEOID, variable, estimate, geometry)
+head(pdx_tracts_raw)
+
+```
+
+``` {r tidycensus tidy}
+pdx_tracts <- pdx_tracts_raw %>%
+  spread(key = variable, value = estimate) %>%
+  rename(medinc = B19013_001, white = B03002_003, 
+         pop = B01003_001) %>%
+  mutate(pct_nonwhite = (pop - white)/pop, 
+         area = st_area(geometry)) # area will have units
+
+# transform to oregon planar projection
+pdx_tracts_p <- st_transform(pdx_tracts, 
+                             crs = 2838) %>%
+  mutate(area = st_area(geometry))
+
+# this function returns different kinds of plots depending on the input type
+plot(pdx_tracts_p)
+
+# sort tracts by area descneding
+pdx_tracts_p %>%
+  arrange(desc(area))
+
+# clip two largest tracts out
+pdx_tracts_p <- pdx_tracts_p %>%
+  filter(area < units::as_units(1e8, "m^2"))
+plot(pdx_tracts_p)
+
+p <- pdx_tracts_p %>%
+  ggplot()
+p + geom_sf(aes(fill = medinc)) +
+  # flip the color ramp dark = high
+   scale_fill_gradient(low = "#56B1F7", high = "#132B43") 
+
+  
+```
+
+```{r next plot}
+p + geom_sf(aes(fill = pct_nonwhite))
+
+```
+
+```{r load biketown data}
+source("C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/code/fetch_biketown.r")
+biketown <- get_data(start = "01/2018", 
+                    end = "12/2018", 
+                    outdir = "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/")
+
+```
