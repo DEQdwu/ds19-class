@@ -1,0 +1,104 @@
+---
+title: "Fun with APIs"
+author: "D Pei Wu"
+date: "April 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(httr)
+library(jsonlite)
+library(dplyr)
+
+
+```
+```{r get trimet data}
+appID <- "appID=[number]"
+baseurl <- "https://developer.trimet.org/ws/v2/arrivals"
+locIDs <- "locIDs=5887,5889,5890,5892"
+
+call_1 <- paste(baseurl, "?", # "?" represents query
+                locIDs, "&",
+                appID, sep = "")
+call_1
+
+
+```
+
+## Note on API data downloads
+look for formats, IDs on the site (in this case TriMet), baseurl, format of how to make the call
+
+generally there are wrappers already written for getting API data for major data sources but it may not have all the specific call or specific data that you need, so you might have to fall back on the long way w JSON etc
+
+for instance there is a GTFS R package (live transit feeds) - one maintained by ropensci
+there is also a package called _tidytransit_
+
+
+
+```{r make call}
+# make a GET request
+
+get_arrivals <- httr::GET(call_1)
+http_status(get_arrivals) #checks the status of the GET. if not 200 look it up
+
+
+# if you ever get a data file that is lists of lists, you can use a function rlist
+names(get_arrivals) 
+headers(get_arrivals)
+
+#when using lists of lists, use double brackets
+parse_arrivals <- fromJSON(content(get_arrivals,  "text"))
+results <- parse_arrivals[["resultSet"]]
+arrivals <- results[["arrival"]]
+head(arrivals)
+
+```
+
+## Note on Leaflet
+
+has more options for production value: 
+
+e.g. coding maps to make them prettier, icons, basemap layers, etc.
+
+caveat - need to be familiar with html and/or CSS
+
+if start using Shiny, javascript helps to understand concepts
+
+good tutorials: jenny bryan, joe chang, others ....look them up!
+
+also for interactive maps
+
+## d3
+wrapper for using pie charts
+
+## Plotly
+a wrapper for ggplot and plotly to make your ggplots interactive
+
+## Regular expressions
+sub:
+gsub: replaces
+
+grep: looking for a specific patter of first occurrence
+grepl: replaces all occurances of patter (logical)
+
+
+```{r intro to regular expressions}
+# this is in base r, there is also a package called stringr 
+# which may be more robust when manipulating a data frame
+# icon is better than R for text mining things
+
+biketown_raw <- biketown_2018
+
+biketown_raw %>%
+  filter(grepl("community", ignore.case = T, StartHub))
+
+biketown_stations <- biketown_raw %>%
+  mutate(station.category = if_else(grepl("community", StartHub, ignore.case = T),
+                                    "Community Corral",
+                                    if_else(grepl(" ", StartHub, ignore.case = T),
+                                            "BIKETOWN Station", "Out of Station")))
+
+
+table(biketown_stations$station.category)
+```

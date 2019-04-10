@@ -15,6 +15,9 @@ library(lwgeom)
 install.packages("tidycensus")
 library(tidycensus)
 library(tidyr)
+install.packages("ggsn")
+library(ggsn)
+library(mapview)
 ```
 
 
@@ -35,7 +38,7 @@ PostGIS (Python; does GIS & mapping)
 # this loads API key for the session * DELETE ME WHEN DONE *
 # census_api_key("insert_key_here")
 
-# object v17
+# object v17, loaded from CEnsus site
 v17 <- tidycensus::load_variables(2017, "acs5", cache = T)
 pdx_tracts_raw <- get_acs(geography = "tract", 
                           year = 2017,
@@ -79,8 +82,22 @@ p <- pdx_tracts_p %>%
   ggplot()
 p + geom_sf(aes(fill = medinc)) +
   # flip the color ramp dark = high
-   scale_fill_gradient(low = "#56B1F7", high = "#132B43") 
-
+  # scale_fill_gradient(low = "#56B1F7", high = "#132B43") 
+  # uses plasma color ramp
+  scale_fill_viridis_c(option = "plasma", 
+                       direction = -1
+                       #, trans = "sqrt"
+                       ) +
+  coord_sf(datum = st_crs(2838), 
+           # xlim = c(2.325e6, 2.35e6)
+           ) + # crs = coordinate system, mercator, etc
+              # xlim constrains x-axis
+  # blank() + # clears x axis, background
+  ggsn::north(pdx_tracts_p, symbol = 3, scale = 0.1) + 
+  ggsn::scalebar(pdx_tracts_p, dist = 4,
+                 dist_unit = "km",
+                 transform = FALSE,
+                 st.size = 3)
   
 ```
 
@@ -91,8 +108,88 @@ p + geom_sf(aes(fill = pct_nonwhite))
 
 ```{r load biketown data}
 source("C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/code/fetch_biketown.r")
+outdir = "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/"
 biketown <- get_data(start = "01/2018", 
                     end = "12/2018", 
-                    outdir = "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/")
+                    outdir = "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/")
+
+# stitch files together
+biketown_2018 <- paste0("C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/", list.files("C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown/")) %>%
+  lapply(read.csv, stringsAsFactors = F) %>%
+  bind_rows()
+
+head(biketown_2018)
+
+# for e.g. shapefiles, just use sf::read_sf()
+# incl Post GIS files
+biketown <- biketown_2018
+hubs_start_sf <- biketown_2018 %>%
+  group_by(StartHub) %>%
+  summarize(lat = mean(StartLatitude),
+            lng = mean(StartLongitude),
+            starts = n()) %>%
+  filter(!is.na(lat) & !is.na(lng)) %>%
+  st_as_sf(coords = c("lng", "lat"),
+           crs = 4326, # sets Coordinate System to WGS84
+           agr = "constant" # don't know what this does
+           )
+mapview(hubs_start_sf, zcol = "starts")
+
+hubs_end <- biketown_2018 %>%
+  group_by(EndHub) %>%
+   summarize(lat = mean(EndLatitude),
+            lng = mean(EndLongitude),
+            ends = n())
+
+hubs_end_sf <- hubs_end %>%
+  filter(!is.na(lat) & !is.na(lng)) %>%
+  st_as_sf(coords = c("lng", "lat"),
+          crs = 4326, # sets Coordinate System to WGS84
+          agr = "constant") # don't know what this does
+  
+mapview(hubs_end_sf, zcol = "ends")
+
+hubs_ratio_sf <- inner_join(hubs_start_sf,
+                            hubs_end,
+                            by = c("StartHub" = "EndHub")) %>%
+  mutate(starts_to_ends = starts/ ends,
+         ends_to_starts = ends / starts)
+
+m1 <- mapview (hubs_ratio_sf, 
+               zcol = "starts_to_ends", # sets colors
+               cex = "starts_to_ends")  # sets size of dot relative to value
+               # kills legend
+m2 <- mapview (hubs_ratio_sf, 
+               zcol = "ends_to_starts", 
+               cex = "ends_to_starts")
+sync(m1, m2)
+
+```
+
+```{r spatial joins}
+hubs_start_sf_p <- hubs_start_sf %>%
+  st_transform(2838)
+
+hubs_start_sf_p <- hubs_start_sf_p %>%
+  sf::st_join(pdx_tracts_p)
+
+```
+## Saving files
+R data files: RDS - good for r-specific output
+good to save raw data file
+
+If it's something you want to share it with someone else who is not working in R then use write.csv
+
+RDS files are much smaller (biketown_raw is 10 MB as RDS vs 72.5 MB as CSV)
+
+```{r saving files}
+saveRDS(pdx_tracts_raw, "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/pdx_tracts_raw.rds")
+
+write.csv(biketown_2018, 
+          "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown_raw.csv",
+          row.names = F)
+saveRDS(biketown_2018, 
+          "C:/Users/dpwpd/Documents/DataScienceClass/ds19-class/data/biketown_raw.rds")
+
 
 ```
